@@ -1,90 +1,62 @@
-#방향: 상 우 하 좌
-di = [-1, 0, 1, 0]
-dj = [ 0, 1, 0,-1]
+import sys
+input = sys.stdin.readline
 
-N, M, Q = map(int, input().split())
-# 벽으로 둘러싸서, 범위체크 안하고, 범위밖으로 밀리지 않게 처리
-arr = [[2]*(N+2)]+[[2]+list(map(int, input().split()))+[2] for _ in range(N)]+[[2]*(N+2)]
-units = {}
-# v = [[0]*(N+2) for _ in range(N+2)] # 디버거로 동작확인용
-init_k = [0]*(M+1)
-for m in range(1, M+1):
-    si,sj,h,w,k=map(int, input().split())
-    units[m]=[si,sj,h,w,k]
-    init_k[m]=k                 # 초기 체력 저장(ans 처리용)
-    # for i in range(si,si+h):    # 디버그용(제출시 삭제 가능)
-    #     v[i][sj:sj+w]=[m]*w
+def solve_chess_knights(L, N, Q, Board, knights_info, commands):
+    direction = {0: (-1, 0), 1: (0, 1), 2: (1, 0), 3: (0, -1)}  # 위: 0, 오른: 1, 아래: 2, 왼: 3
+    
+    # 기사 정보 저장
+    knights = {}
+    for i, (r, c, h, w, k) in enumerate(knights_info):
+        positions = set()
+        for dx in range(h):
+            for dy in range(w):
+                positions.add((r + dx - 1, c + dy - 1))
+        knights[i] = {'positions': positions, 'hp': k}
 
-def push_unit(start, dr):       # s를 밀고, 연쇄처리..
-    q = []                      # push 후보를 저장
-    pset = set()                # 이동 기사번호 저장
-    damage = [0]*(M+1)          # 각 유닛별 데미지 누적
+    # 명령 수행
+    for num, order in commands:
+        num -= 1  # 기사 번호는 0부터 시작하도록 조정
+        if knights[num]['hp'] <= 0:  # 이미 쓰러진 기사는 무시
+            continue
 
-    q.append(start)             # 초기데이터 append
-    pset.add(start)
+        dx, dy = direction[order]
+        moving_knights = [num]  # 이동할 기사들
+        current_positions = knights[num]['positions']
+        while True:
+            new_positions = {(x + dx, y + dy) for x, y in current_positions}
+            next_knight = None
 
-    while q:
-        cur = q.pop(0)          # q에서 데이터 한개 꺼냄
-        ci,cj,h,w,k = units[cur]
+            # 이동 가능 여부 확인 (다른 기사나 벽 확인)
+            for k, knight in knights.items():
+                if k != num and knight['positions'] & new_positions:
+                    next_knight = k
+                    break
+            if next_knight is None and not all(0 <= nx < L and 0 <= ny < L and Board[nx][ny] != 2 for nx, ny in new_positions):
+                break  # 이동할 수 없으면 멈춤
 
-        # 명령받은 방향진행, 벽이아니면, 겹치는 다른조각이면 => 큐에 삽입
-        ni,nj=ci+di[dr], cj+dj[dr]
-        for i in range(ni, ni+h):
-            for j in range(nj, nj+w):
-                if arr[i][j]==2:    # 벽!! => 모두 취소
-                    return
-                if arr[i][j]==1:    # 함정인 경우
-                    damage[cur]+=1  # 데미지 누적
+            current_positions = new_positions
+            if next_knight is not None:
+                moving_knights.append(next_knight)
+                num = next_knight
+            else:
+                # 모든 이동한 기사들의 위치 갱신
+                for knight_num in moving_knights:
+                    knights[knight_num]['positions'] = current_positions
+                break
 
-        # 겹치는 다른 유닛있는 경우 큐에 추가(모든 유닛 체크)
-        for idx in units:
-            if idx in pset: continue    # 이미 움직일 대상이면 체크할 필요없음
+    # 대미지 계산
+    total_damage = 0
+    for knight in knights.values():
+        damage = sum(Board[x][y] == 1 for x, y in knight['positions'])
+        knight['hp'] = max(knight['hp'] - damage, 0)
+        total_damage += damage
 
-            ti,tj,th,tw,tk=units[idx]
-            # 겹치는 경우
-            if ni<=ti+th-1 and ni+h-1>=ti and tj<=nj+w-1 and nj<=tj+tw-1:
-                q.append(idx)
-                pset.add(idx)
+    # 생존한 기사들의 대미지 합산
+    return total_damage
 
-            # 겹치지 않는 경우 (이 반대가 확실히 겹치는지 따져보고 사용해야 함)
-            # if ni>ti+th-1 or ni+h-1<ti or nj+w-1<tj or nj>tj+tw-1:
-            #     pass
-            # else:
-            #     q.append(idx)
-            #     pset.add(idx)
 
-            # 상 우 하 좌 (닿는 경우.. 복잡함)
-            # if ((ni==ti+th-1 or ni+h-1==ti) and (tj<=nj<tj+tw or tj<=nj+w-1<tj+tw or nj<=tj<nj+w or nj<=tj+tw-1<nj+w)) or \
-            #         ((nj==tj+tw-1 or nj+w-1==tj) and (ti<=ni<ti+th or ti<=ni+h-1<ti+th or ni<=ti<ni+h or ni<=ti+th-1<ni+h)):
-            #     q.append(idx)
-            #     pset.add(idx)
-
-    # 명령 받은 기사는 데미지 입지 않음
-    damage[start]=0
-
-    # for idx in pset:
-    #     si,sj,h,w,k = units[idx]
-    #     for i in range(si, si + h):
-    #         v[i][sj:sj + w] = [0] * w  # 기존위치 지우기
-
-    # 이동, 데미지가 체력이상이면 삭제처리
-    for idx in pset:
-        si,sj,h,w,k = units[idx]
-
-        if k<=damage[idx]:  # 체력보다 더 큰 데미지면 삭제
-            units.pop(idx)
-        else:
-            ni,nj=si+di[dr], sj+dj[dr]
-            units[idx]=[ni,nj,h,w,k-damage[idx]]
-            # for i in range(ni,ni+h):
-            #     v[i][nj:nj+w]=[idx]*w     # 이동위치에 표시
-
-for _ in range(Q):  # 명령 입력받고 처리(있는 유닛만 처리)
-    idx, dr = map(int, input().split())
-    if idx in units:
-        push_unit(idx, dr)      # 명령받은 기사(연쇄적으로 밀기: 벽이 없는 경우)
-
-ans = 0
-for idx in units:
-    ans += init_k[idx]-units[idx][4]
-print(ans)
+L, N, Q = map(int, input().split())
+Board = [list(map(int, input().split())) for _ in range(L)]
+knights_info = [list(map(int, input().split())) for _ in range(N)]
+commands = [list(map(int, input().split())) for _ in range(Q)]
+print(solve_chess_knights(L, N, Q, Board, knights_info, commands))
