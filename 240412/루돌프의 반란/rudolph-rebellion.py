@@ -1,204 +1,150 @@
-import sys
+N, M, P, C, D = map(int, input().split())
+visited = [[0] * N for _ in range(N)]
 
-dxs = [0,1,1,1,0,-1,-1,-1]
-dys = [1,1,0,-1,-1,-1,0,1]
+ri, rj = map(lambda x: int(x) - 1, input().split())
+visited[ri][rj] = -1
 
-sdxs = [-1,0,1,0]
-sdys = [0,1,0,-1]
+scores = [0] * (P + 1)
+alives = [1] * (P + 1)
+alives[0] = 0
+wakeup_turns = [1] * (P + 1)
 
-def select_santa(cow):
-    r1,c1=cow
-    close_dis=2500
-    select_santa_num=0
-    select_santa_loc=[0,0]
-    for i in santa:
-        r2,c2 = santa[i]
-        dis = (r1-r2)**2 + (c1-c2)**2
-        if dis < close_dis:
-            select_santa_num=i
-            select_santa_loc=[r2,c2]
-            close_dis = dis
-        elif dis == close_dis:
-            if r2>select_santa_loc[0]:
-                select_santa_num=i
-                select_santa_loc=[r2,c2]
-                close_dis = dis
-            elif r2==select_santa_loc[0]:
-                if c2>select_santa_loc[1]:
-                    select_santa_num=i
-                    select_santa_loc=[r2,c2]
-                    close_dis = dis
-                    
-    return select_santa_num, select_santa_loc
+santas = [[0] * 2 for _ in range(P + 1)]
+for _ in range(1, P + 1):
+    n, i, j = map(int, input().split())
+    santas[n] = [i - 1, j - 1]
+    visited[i - 1][j - 1] = n
 
-def Interaction(crush_new_santa_num,dict_x,dict_y):
-    
-    x,y = santa[crush_new_santa_num]
-    new_x = x + dict_x
-    new_y = y + dict_y
-    
-    if not in_range(new_x,new_y):
-        del santa[crush_new_santa_num]     # 보드 밖으로 나감
-        faint[crush_new_santa_num] = 0
-    else:
-        TF, p_num = check(crush_new_santa_num,new_x,new_y)              # 새 위치에 산타가 있는지 없는지 확인 
-        if not TF:                                  # 있는경우 상호작용 
-            Interaction(p_num,dict_x,dict_y)
-        
-        santa[crush_new_santa_num] = [new_x,new_y]  # 상호작용이랑 상관없이 이동할건 해야지
-            
-        
+def move_santa(cur, si, sj, di, dj, mul):
+    # cur번 산타를 (si, sj)에서 (di, dj)방향으로 mul칸 이동
+    que = [(cur, si, sj, mul)]
 
-def cow_crash(cow_loc,x1,y1,p_num,x2,y2,k):
-    santa_score[p_num] += C
-    dict_x = x1-cow_loc[0]
-    dict_y = y1-cow_loc[1]
-    
-    x2 += dict_x*C
-    y2 += dict_y*C
-    
-    if not in_range(x2,y2):
-        del santa[p_num]      # 보드 밖으로 나감 
-        faint[p_num] = 0
-    else:
-        faint[p_num] = 2            # 기절  # 두턴뒤에 풀림 
-        TF,crush_new_santa_num = check(p_num,x2,y2)
-        if not TF:
-            # 상호작용 crush_new_santa_num
-            Interaction(crush_new_santa_num,dict_x,dict_y)
-
-        santa[p_num] = [x2,y2]  # 상호작용이랑 상관없이 이동할건 해야지
-
-def santa_crash(p_num,x1,y1,k):
-    santa_score[p_num] += D
-    dict_x = santa[p_num][0] - x1
-    dict_y = santa[p_num][1] - y1
-    
-    x1 += dict_x*D
-    y1 += dict_y*D
-    
-    if not in_range(x1,y1):
-        del santa[p_num]      # 보드 밖으로 나감 
-        faint[p_num] = 0
-    else:
-        faint[p_num] = 1            # 기절  # 두턴뒤에 풀림 
-        TF,crush_new_santa_num = check(p_num,x1,y1)
-        if not TF:
-            # 상호작용 crush_new_santa_num
-            Interaction(crush_new_santa_num,dict_x,dict_y)
-            
-        santa[p_num] = [x1,y1]   # 상호작용이랑 상관없이 이동할건 해야지
-
-def in_range(x,y):
-    return 0<x<N+1 and 0<y<N+1
-
-def check(p_num,x1,y1):
-    for i in santa:
-        if i == p_num:
-            continue
-        if santa[i] == [x1,y1]:
-            return False, i
-    return True, 0
-
-def santa_move_rule(p_num,x1,y1,x2,y2):
-    dis = (x1-x2)**2 + (y1-y2)**2
-    new_x,new_y=x1,y1
-    for dx,dy in zip(sdxs,sdys):
-        nx=x1+dx
-        ny=y1+dy
-        
-        if in_range(nx,ny):
-            new_dis = (nx-x2)**2 + (ny-y2)**2
-            if new_dis < dis:
-                TF,_ = check(p_num,nx,ny)
-                if TF:
-                    dis = new_dis
-                    new_x,new_y=nx,ny
-    return new_x,new_y                
-
-def cow_move_rule(x1,y1,x2,y2):
-    if x1>x2:
-        x1 -= 1
-    elif x1<x2:
-        x1 += 1
-    else:
-        x1 = x1 
-    
-    if y1>y2:
-        y1 -= 1
-    elif y1<y2:
-        y1 += 1
-    else:
-        y1 = y1
-    
-    return x1,y1    
-
-# 루돌프 움직임 
-def cow_move(cow_loc,k):
-    x1,y1 = cow_loc
-    p_num, [x2,y2] = select_santa(cow_loc)
-    x1,y1 = cow_move_rule(x1,y1,x2,y2)
-
-    # 만약 루돌프가 산타랑 충돌할때 
-    if [x1,y1]==[x2,y2]:
-        cow_crash(cow_loc,x1,y1,p_num,x2,y2,k)
-    
-    return [x1,y1]
-
-
-# 산타 움직임 
-def santa_move(cow_loc,k):
-    x2,y2=cow_loc
-    for i in range(1,P+1):
-        if santa.get(i)==None:
-            continue
-        if faint[i]!=0:          # 기절한 산타는 움직임 없음 
-            faint[i]-=1
-            continue
-        
-        x1,y1=santa[i]
-        x1,y1 = santa_move_rule(i,x1,y1,x2,y2)
-        
-        # 산타가 움직였는데 루돌프랑 부딪칠 경우 
-        if [x1,y1] == [x2,y2]:
-            santa_crash(i,x1,y1,k)
+    while que:
+        cur, ci, cj, mul = que.pop(0)
+        # 진행방향으로 mul칸만큼 이동시켜서 범위 안이고 산타 있으면 que 삽입 / 밖이면 처리
+        mi, mj = ci + di * mul, cj + dj * mul
+        # 범위 내에 있으면
+        if 0 <= mi < N and 0 <= mj < N:
+            # 빈 칸 => 이동처리
+            if visited[mi][mj] == 0:
+                visited[mi][mj] = cur
+                santas[cur] = [mi, mj]
+                return
+            # 산타가 있음 => 연쇄이동
+            else:
+                # visited[mi][mj]는 다음 산타 번호
+                que.append((visited[mi][mj], mi, mj, 1))
+                visited[mi][mj] = cur
+                santas[cur] = [mi, mj]
+        # 범위 밖이면 => 탈락 => 끝
         else:
-            santa[i]=[x1,y1]
+            alives[cur] = 0
+            # return이나 break 둘 다 가능
+            return
 
-    
-if __name__=="__main__":
-    # N:게임격자, M: 게임턴수, P:산타개수, C:루돌프 힘, D: 산타의 힘
-    N,M,P,C,D = map(int, input().split())   
-    board = [[0]*(N+1) for _ in range(N+1)]
-    cow_loc = list(map(int, input().split()))   # 소의 위치 (Rr, Rc)
-    
-    santa = {}
-    for _ in range(P):
-        pid,x,y=map(int, input().split())
-        santa[pid]=[x,y]
-    
+for turn in range(1, M + 1):
+    # 0. 산타가 모두 탈락하면(= alive 모두 0이다)
+    if alives.count(1) == 0:
+        break
 
-    # 기절 상태 기록 
-    faint = [0]*(P+1)
-    santa_score = [0]*(P+1)
+    # 1-1. 루돌프 이동: 가장 가까운 산타 찾기
+    close_dist = 2 * N ** 2
+    for snum in range(1, P + 1):
+        # 탈락한 산타는 skip
+        if alives[snum] == 0:
+            continue
 
-    total_score = 0
-    # 게임 플레이수 M
-    for k in range(1,M+1):
-        # 루돌프 움직이고 
-        cow_loc = cow_move(cow_loc,k)
+        si, sj = santas[snum]
+        dist = (ri - si) ** 2 + (rj - sj) ** 2
+        if dist < close_dist:
+            close_dist = dist
+            # 최소 거리 => 새 리스트
+            close_lst = [(si, sj, snum)]
+        # 최소거리 같으면 추가
+        elif dist == close_dist:
+            close_lst.append((si, sj, snum))
+    # 내림차순으로 정렬(행 큰, 열 큰 순)
+    close_lst.sort(reverse=True)
+    # 루돌프가 돌격할 목표 산타(루돌프 기준으로 가장 가까운 산타)
+    csi, csj, csnum = close_lst[0]
 
-        if len(santa)==0:
-            break
-        
-        # 1번 산타부터 P번산타까지 산타들 움직임 
-        santa_move(cow_loc,k)
+    # 1-2. 대상 산타 방향으로 루돌프 이동
+    rdi, rdj = 0, 0
+    # 루돌프 좌표가 산타보다 크면 가까운 방향으로 이동
+    if ri > csi:
+        rdi = -1
+    elif ri < csi:
+        rdi = 1
 
-        if len(santa)==0:
-            break
-        
-        for pid in santa:
-            santa_score[pid] += 1
+    if rj > csj:
+        rdj = -1
+    elif rj < csj:
+        rdj = 1
 
-        
-    print(*santa_score[1:])
+    # 현재 루돌프 자리 지우기
+    visited[ri][rj] = 0
+    # 루돌프 이동
+    ri, rj = ri + rdi, rj + rdj
+    # 이동한 자리에 표시
+    visited[ri][rj] = -1
+
+    # 1-3. 루돌프와 산타가 충돌한 경우 산타 밀리는 처리(충돌처리)
+    # 충돌
+    if (ri, rj) == (csi, csj):
+        # 산타 C점 획득
+        scores[csnum] += C
+        # 깨어날 턴(차례) 번호 저장
+        wakeup_turns[csnum] = turn + 2
+        # 산타 루돌프가 온 방향만큼 C칸 이동
+        move_santa(csnum, csi, csj, rdi, rdj, C)
+
+
+    # 2. 순서대로 산타이동: 기절하지 않은 경우(산타의 차례 <= turn)
+    for snum in range(1, P + 1):
+        # 탈락한 경우 skip
+        if alives[snum] == 0:
+            continue
+
+        # 깨어날 턴이 안 된 경우(기절한 경우)
+        if wakeup_turns[snum] > turn:
+            continue
+
+        si, sj = santas[snum]
+        close_dist = (ri - si) ** 2 + (rj - sj) ** 2
+        tmp_lst = []
+
+        # 상우하좌 순으로 최소 거리 찾기
+        for di, dj in [(-1, 0), (0, 1), (1, 0), (0, -1)]:
+            # 이동할 위치 => 더 짧아지는 거리면
+            mi, mj = si + di, sj + dj
+            dist = (ri - mi) ** 2 + (rj - mj) ** 2
+            # 범위 내 산타 없고(<= 0),더 짧은 거리인 경우
+            if 0 <= mi < N and 0 <= mj < N and visited[mi][mj] <= 0 and close_dist > dist:
+                close_dist = dist
+                tmp_lst.append((mi, mj, di, dj))
+
+        # 이동할 위치 없음
+        if len(tmp_lst) == 0:
+            continue
+
+        mi, mj, di, dj = tmp_lst[-1]
+
+        # 2-2. 루돌프와 충돌 시 처리
+        # 루돌프와 충돌하면 반대로 튕겨나감
+        if (ri, rj) == (mi, mj):
+            scores[snum] += D
+            wakeup_turns[snum] = turn + 2
+            visited[si][sj] = 0
+            move_santa(snum, mi, mj, -di, -dj, D)
+        # 빈 칸: 좌표갱신, 이동처리
+        else:
+            visited[si][sj] = 0
+            visited[mi][mj] = snum
+            santas[snum] = [mi, mj]
+
+    # 3. 점수 획득: alive 산타는 +1점
+    for snum in range(1, P + 1):
+        if alives[snum] == 1:
+            scores[snum] += 1
+
+print(*scores[1:])
