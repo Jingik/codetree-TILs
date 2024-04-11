@@ -1,122 +1,70 @@
-from collections import deque
+di =[-1,0,1,0 ] #상,우,하,좌
+dj =[0,1,0,-1]
 
-L, N, Q = map(int, input().split())
+L,N,Q = map(int,input().split())
+arr=[[2]*(L+2)] + [[2]+list(map(int,input().split()))+[2] for _ in range(L)]+ [[2]*(L+2)]
+units = {} # 새로운 입력 저장용 / # 1:r,c,w,h,k 2:r,c,w,h,k 
+init_k = {} # 초기 체력 저장용 / # 1:k , 2:k 
 
-board = [list(map(int, input().split())) for _ in range(L)]
-fighter = [list(map(int, input().split())) for _ in range(N)]
+for i in range(1,N+1): # 이렇게 해야 units 인덱스 시작 1로 가능 
+    si,sj,h,w,k = map(int,input().split())
+    units[i]= [si,sj,h,w,k]
+    init_k[i] = [k] # 초기 체력 저장용
 
-sirs = {i+1:[] for i in range(N)}
-order = [list(map(int, input().split())) for _ in range(Q)]
-def get_xy(arr, temp):
-    r,c,h,w = arr[0], arr[1], arr[2], arr[3]
-    for x in range(r, r+h):
-        for y in range(c, c+w):
-                temp.append([x, y])
-    return temp  
+def push_unit(idx,dr,arr,units,di,dj):
+    q=[]     #밀 대상들       # push 후보를 저장
+    pset=[]        # 이동 기사번호 저장(중복체크 위함)
+    damage=[0]*(N+1)     # 각 유닛별 데미지 누적 
+    q.append(idx)      # 초기데이터 append
+    pset.append(idx)
 
-def is_board(x, y):
-    return 0 <= x < L and 0 <= y < L
+    while q:# q에 데이터가 있는 동안 
+        cur=q.pop(0)     # 첫번째 요소 제거  # q에서 데이터 한개 꺼냄 #기사 번호  # q: 선입선출 FIFO 이므로 # q.pop()은 끝에 요소 제거 
+                        # 근데 돌려보니 또 상관 없긴함 
+        ci,cj,h,w,k= units[cur] # 기사 위치 가져오기 #cur 0,1,2,3 순 
 
+        ni,nj= ci+di[dr], cj+dj[dr]# 명령받은 방향진행, 벽이아니면, 겹치는 다른조각이면 => 큐에 삽입
+        for i in range(ni, ni+h):       # 벽!! => 모두 취소
+            for j in range(nj,nj+w):       # 벽이면 밀수 없으니 그냥 끝내. 
+                if arr[i][j]==2: # 벽이라면 
+                    return     
+                elif arr[i][j]==1: # 함정이라면 
+                    damage[cur]+=1   # 데미지 누적 
+        # 움직였을 때 다른 유닛이 있으면 계도 움직여야 하니 
+        # 겹치는 다른 유닛있는 경우 큐에 추가(모든 유닛 체크)
+        for i in units:
+            if i in pset: continue # 이미 움직일 대상이면 체크할 필요없음
+            ti,tj,th,tw,tk= units[i]  
 
-def move_sirs(i, d):
-    # 체스판에서 삭제된 기사 이동 명령
-    if i not in sirs.keys():
-        return []
-    
-    # 현존하는 기사들의 좌표 저장
-    states = {}
-    for key in sirs.keys():
-        temp = []
-        states[key] = get_xy(sirs[key][0], temp)
-    
-    # 이동 명령을 받은 기사
-    q = deque()
-    get_xy(sirs[i][0], q)
-    moved_sir.add(i)
+            if ni<=ti+th-1 and ni+h-1>=ti and tj<=nj+w-1 and nj<=tj+tw-1: # 겹치는 경우
+                q.append(i)
+                pset.append(i)     
 
+    # 명령 받은 기사는 데미지 입지 않음
+    damage[idx]=0 # 다시 0으로 맞추기 
 
-    while q:
-        x, y = q.popleft()
-        nx = x + dx[d]
-        ny = y + dy[d]
+    # 이동, 데미지가 체력이상이면 삭제처리
+    for idx in pset:
+        si,sj,h,w,k = units[idx]
 
-        # 이동한 곳이 격자 밖인 경우
-        if not is_board(nx, ny):
-            return []
-        
-        for key, value in states.items():
-            # 같이 밀릴 기사가 있고, 아직 밀리지 않은 기사인 경우
-            if [nx, ny] in value and key not in moved_sir:
-                moved_sir.add(key)
-                get_xy(sirs[key][0], q)
-        
-        # 밀린 곳이 벽인 경우
-        if board[nx][ny] == 2:
-            return []
+        if k<=damage[idx]:  # 체력보다 더 큰 데미지면 삭제
+            units.pop(idx)
         else:
-            moved_sir.add(i)
-    # 밀릴 기사들의 좌표를 이동
-    for idx in moved_sir:
-        sirs[idx][0][0] += dx[d]
-        sirs[idx][0][1] += dy[d]
+            ni,nj=si+di[dr], sj+dj[dr]
+            units[idx]=[ni,nj,h,w,k-damage[idx]]
 
 
-    return moved_sir
 
-def get_damege(moved_sir, id):
-    if not moved_sir:
-        return
-    states = {}
-    # 기사 범위 좌표 구하기
-    for idx in moved_sir:
-        temp = []
-        states[idx] = get_xy(sirs[idx][0], temp)
+
+
+
+for _ in range(Q):
+    idx,dr = map(int,input().split())
+    if idx in units:
+        push_unit(idx,dr,arr,units,di,dj)
+
+answer=0
+for idx in units:
+    answer += init_k[idx][0] - units[idx][4] # 이런 생각하기가 쉽지가 않군 
     
-    # 좌표를 돌면서 함정을 지나면 데미지 입기
-    for key, value in states.items():
-        cnt = 0
-        for x, y in value:
-            # 함정의 개수 세기
-            if board[x][y] == 1:
-                cnt += 1
-        # 남은 피 <= 입는 데미지: 데미지 없앰 & 체스판에서 없애기
-        # if sirs[key][1] - cnt <= 0:
-                
-        # 19번에서 에러가 난 이유 : 이미 피를 -시켰는데 죽어버린 경우까지 포함해버림
-        # damege를 따로 관리로 해결 (damege를 따로 관리하면서 원래의 피도 깎아줘야함)
-        if  cnt >= sirs[key][1]:
-            damege[key] = 0
-            del sirs[key]
-        else:
-            sirs[key][1] -= cnt
-            damege[key] += cnt
-
-# 로봇 해시로 저장
-# [로봇의 위치, h, w], k
-for idx, sir in enumerate(fighter):
-    r,c,h,w,k = sir[0]-1, sir[1]-1, sir[2], sir[3], sir[4]
-    sirs[idx+1].append([r, c, h, w])
-    sirs[idx+1].append(k)
- #print(sirs)
-
- # 0:위, 1:오른, 2:아래, 3:왼
-dx = [-1, 0, 1, 0]
-dy = [0, 1, 0, -1]
-
-damege = {i+1:0 for i in range(N)}  # 데미지를 저장
-
-for i, d in order:
-    moved_sir = set()    # 이동 한 기사
-
-    # 1. 기사 이동
-    moved_sir = move_sirs(i, d)
-
-    # 명령을 받은 기사는 데미지x
-    if moved_sir:
-        moved_sir.remove(i)
-
-    #2. 데미지 입기
-    get_damege(moved_sir, i)
-
-# 명령이 끝난 후 살아남은 기사의 데미지 합
-print(sum(damege.values()))
+print(answer)
