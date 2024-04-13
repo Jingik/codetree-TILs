@@ -7,7 +7,7 @@ input = sys.stdin.readline
 direction = [(-1, 0), (0, -1), (0, 1), (1, 0)]
 EMPTY = (-1, -1)
 
-N, M = map(int, input().split())
+N, M = tuple(map(int, input().split()))
 
 # 1 : Basecamp
 # 2 : 갈수 없는 곳
@@ -30,7 +30,7 @@ is_vistied = [[False] * N for _ in range(N)]
 Step = [[0] * N for _ in range(N)]
 
 def is_valid(x, y):
-    return 0 <= x and x < N and 0 <= y and y < N
+    return 0 <= x < N and 0 <= y < N
 
 def can_go(x, y):
     return is_valid(x,y) and not is_vistied[x][y] and Board[x][y] != 2
@@ -43,9 +43,7 @@ def bfs(startpos):
             
     que = deque()
     que.append(startpos)
-    sx, sy = startpos
-    is_vistied[sx][sy] = True
-    Step[sx][sy] = 0
+    is_vistied[startpos[0]][startpos[1]] = True
     
     while que:
         x, y = que.popleft()
@@ -93,7 +91,7 @@ def Simulate():
     min_x, min_y = EMPTY
     for i in range(N):
         for j in range(N):
-            if is_vistied[i][i] and Board[i][j] == 1 and min_dist > Step[i][j]:
+            if is_vistied[i][j] and Board[i][j] == 1 and min_dist > Step[i][j]:
                 min_dist = Step[i][j]
                 min_x, min_y = i, j
                 
