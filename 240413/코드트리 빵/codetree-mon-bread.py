@@ -1,89 +1,114 @@
+import sys
 from collections import deque
 
+INT_MAX = sys.maxsize
+input = sys.stdin.readline
+
+direction = [(-1, 0), (0, -1), (0, 1), (1, 0)]
+EMPTY = (-1, -1)
+
 N, M = map(int, input().split())
-arr = [[1] * (N+2)]
-for i in range(N):
-    arr.append([1] + list(map(int, input().split())) + [1])
-arr.append([1] *(N+2))
 
-basecamp = set() # 중복 안됨
+# 1 : Basecamp
+# 2 : 갈수 없는 곳
+Board = [list(map(int, input().split())) for _ in range(N)]
 
-for j in range(1, N+1):
-    for i in range(1, N+1):
-        if arr[j][i] == 1:
-            basecamp.add((j, i))
-            arr[j][i] = 0
+csv_list = []
+for _ in range(M):
+    x, y = tuple(map(int, input().split()))
+    csv_list.append((x-1, y-1))
 
-store = {} # 편의점 위치
+people = [EMPTY] * M
 
-for m in range(1, M+1):
-    j, i = map(int, input().split())
-    store[m] = (j, i)
+curr_t = 0
 
-def find(sj, si, dests): # 시작좌표에서 목적지 좌표들 set 중 최단거리 동일반경 리스트를 모두 찾는 것
-    dy, dx = [-1, 0, 0, 1], [0,-1, 1, 0]
-    q = deque()
-    tlist = []
-    visited = [[False]*(N+2) for _ in range(N+2)]
-    q.append((sj, si))
-    visited[sj][si] = True
-    while q:
-        # 동일 범위(반경) 까지 처리하려면?
-        nq = deque()
-        # 뻗어가는건 new q 에 넣음
-        for cj, ci in q:
-            if (cj, ci) in dests: # 목적지 찾음
-                tlist.append((cj, ci))
-            else:
-                # 네방향, 미방문, 조건 : arr[][] == 0
-                for idx in range(4):
-                    nj, ni = cj + dy[idx], ci + dx[idx]
-                    if not visited[nj][ni] and arr[nj][ni] == 0:
-                        nq.append((nj, ni))
-                        visited[nj][ni] = True
-        # 목적지 찾앗으면 리턴해야함
-        if len(tlist) > 0:
-            tlist.sort()
-            return tlist[0]
-        q = nq
+## 매 대상마다 갱신
+# 들어갔는지 확인
+is_vistied = [[False] * N for _ in range(N)]
 
-def solve():
-    q = deque()
-    time = 1
-    arrived = [0] * (M+1) # 0이면 미도착, >0 이면 도착
+# 거리 저장 
+Step = [[0] * N for _ in range(N)]
 
-    while q or time == 1: #처음 또는 q에 데이터가 있는 동안 (이동할 사람이 있는 동안)
-        # 1. 모두 편의점 방향 최단거리 이동
-        nq = deque()
-        alist = []
-        for cj, ci, num in q:
-            if arrived[num] == 0: # 도착하지 않은 사람만
-                # 편의점 방향 최단거리 한칸 이동
-                # 편의점에서 시작, 현재위치 상하좌우
-                nj, ni = find(store[num][0], store[num][1], set(((cj-1, ci), (cj+1, ci), (cj, ci-1), (cj, ci+1))))
-                if (nj, ni) == (store[num]):
-                    arrived[num] = time
-                    alist.append((nj, ni)) # 통행 금지는 모두 이동 후 처리해야함
-                else:
-                    nq.append((nj, ni, num)) # 계속 이동
-        q = nq
-        # 2. 편의점 도착처리 -> arr[][] = 1 (이동불가 처리)
+def is_valid(x, y):
+    return 0 <= x and x < N and 0 <= y and y < N
 
-        if len(alist) > 0:
-            for (aj, ai) in alist:
-                arr[aj][ai] = 1 # 이동불가 처리
+def can_go(x, y):
+    return is_valid(x,y) and not is_vistied[x][y] and Board[x][y] != 2
 
-        # 3. 시간번호의 멤버가 베이스캠프로 순간이동
-        if time <= M:
-            # 시작좌표 -> 편의점
-            sj, si = store[time]
-            ej, ei = find(sj, si, basecamp) # 가장 가까운 베이스캠프 선택
-            basecamp.remove((ej, ei))
-            arr[ej][ei] = 1   # 이동 불가 표시
-            q.append((ej, ei, time)) # 뻗어나가야함. 베이스캠프에서 시작
+def bfs(startpos):
+    for i in range(N):
+        for j in range(N):
+            is_vistied[i][j] = False
+            Step[i][j] = 0
+            
+    que = deque()
+    que.append(startpos)
+    is_vistied[startpos[0]][startpos[1]] = True
+    
+    while que:
+        x, y = que.popleft()
+        for dir in direction:
+            nx, ny = x + dir[0] , y + dir[1]
+            if can_go(nx, ny):
+                is_vistied[nx][ny] = True
+                Step[nx][ny] = Step[x][y] + 1
+                que.append((nx, ny))
+                
+def Simulate():
+    # 격자에 있는 사람에 한해서 편의점 방향으로 한 칸씩 이동
+    for i in range(M):
+        if people[i] == EMPTY or people[i] == csv_list[i]:
+            continue
+        
+        bfs(csv_list[i])
+        
+        px, py = people[i]
+        
+        min_dist = INT_MAX
+        min_x, min_y = EMPTY     
+        for dir in direction:
+            nx, ny = px + dir[0], py + dir[1]
+            if is_valid(nx, ny) and is_vistied[nx][ny] and min_dist > Step[nx][ny]:
+                min_dist = Step[nx][ny]
+                min_x, min_y = nx, ny
+        
+        people[i] = (min_x, min_y)
+    
+    # 도착했으면 도착 표시
+    for i in range(M):
+        if people[i] == csv_list[i]:
+            px, py = people[i]
+            Board[px][py] = 2
+            
+    # 시간이 m 보다 크다면 패스
+    if curr_t > M:
+        return    
+    
+    # 편의점에서 가장 가까운 basecamp 고르기
+    bfs(csv_list[curr_t - 1])
+    
+    min_dist = INT_MAX
+    min_x, min_y = EMPTY
+    for i in range(N):
+        for j in range(N):
+            if is_vistied[i][i] and Board[i][j] == 1 and min_dist > Step[i][j]:
+                min_dist = Step[i][j]
+                min_x, min_y = i, j
+                
+    people[curr_t - 1] = (min_x, min_y)
+    Board[min_x][min_y] = 2
+    
+def end():
+    for i in range(M):
+        if people[i] != csv_list[i]:
+            return False
+    return True
 
-        time += 1
-    return max(arrived)
+while True:
+    curr_t += 1
+    Simulate()
+    
+    if end():
+        break
 
-ans=solve()
-print(ans)
+print(curr_t)
