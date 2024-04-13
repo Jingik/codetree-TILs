@@ -43,7 +43,9 @@ def bfs(startpos):
             
     que = deque()
     que.append(startpos)
-    is_vistied[startpos[0]][startpos[1]] = True
+    sx, sy = startpos
+    is_vistied[sx][sy] = True
+    Step[sx][sy] = 0
     
     while que:
         x, y = que.popleft()
