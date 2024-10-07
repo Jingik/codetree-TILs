@@ -1,140 +1,83 @@
-import sys
-input = sys.stdin.readline
-from collections import deque
-from copy import deepcopy
+def rotate(si, sj, arr):
+  narr = [x[:] for x in arr]
+  for i in range(3):
+    for j in range(3):
+      narr[si+i][sj+j] = arr[si+3-1-j][sj+i]
+  return narr
 
-def explore(e_arr):
-    global arr
-    max_cnt = 0
-    min_i, min_j = 5, 5
-    route = []
-    new_arr = []
-    min_rotate = 3
-    for i in range(0, 3):
-        for j in range(0, 3):
-            temp_arr = deepcopy(arr)
-            before_rotate = []
-            for r in range(0, 3):
-                before_rotate.append(arr[i+r][j:j+3])
+def count_clear(arr, clr):
+  v = [[0]*5 for _ in range(5)]
+  cnt = 0
+  for i in range(5):
+    for j in range(5):
+      if v[i][j] == 0:
+        v[i][j] = 1
+        t = bfs(arr, i, j, v, clr)
+        cnt+=t
+  return cnt
 
-            for _ in range(3):
-                after_rotate = list(map(list, zip(*before_rotate[::-1])))
-                before_rotate = deepcopy(after_rotate)
-                r = 0
-                for ai in range(i, i+3):
-                    temp_arr[ai][j:j+3] = after_rotate[r]
-                    r += 1
-                cnt, temp_route = gain_score(temp_arr)
-                if temp_route:
-                    if cnt > max_cnt:
+def bfs(arr, si, sj, v, clr):
+  q = []
+  cnt = 1
+  sset = set()
 
-                        min_i, min_j = i, j
-                        max_cnt = cnt
-                        route = temp_route
-                        new_arr = deepcopy(temp_arr)
-                        min_rotate = _
-                    elif cnt == max_cnt:
+  q.append((si, sj))
+  sset.add((si, sj))
 
-                        if _ < min_rotate:
-                            min_i, min_j = i, j
-                            max_cnt = cnt
-                            route = temp_route
-                            new_arr = deepcopy(temp_arr)
+  while q:
+    ci, cj = q.pop(0)
+    for di, dj in ((-1,0),(0,1),(1,0),(0,-1)):
+      ni, nj = ci+di, cj+dj
+      if 0<=ni<5 and 0<=nj<5 and v[ni][nj]==0 and arr[ci][cj]==arr[ni][nj]:
+        q.append((ni, nj))
+        v[ni][nj] = 1
+        sset.add((ni, nj))
+        cnt+=1
 
-                            min_rotate = _
-                        elif _ == min_rotate:
-                            if j < min_j:
-                                min_i, min_j = i, j
-                                max_cnt = cnt
-                                route = temp_route
-                                new_arr = deepcopy(temp_arr)
-                                min_rotate = _
-                            elif j == min_j:
-                                if i < min_i:
-                                    min_i, min_j = i, j
-                                    max_cnt = cnt
-                                    route = temp_route                        
-                                    new_arr = deepcopy(temp_arr)
-                                    min_rotate = _
-    if max_cnt == 0:
-        return -1
-    else:
-        flag_con = True
-        arr = deepcopy(new_arr)
-        while flag_con:
-            flag_con = False
-            arr = deepcopy(fill_block(arr, route))
-            cnt, temp_route = gain_score(arr)
-            if cnt > 0:
-                flag_con = True
-                max_cnt += cnt
-                route = temp_route
-        return max_cnt
+  if cnt>2:
+    if clr == 1:
+      for i, j in sset:
+        arr[i][j] = 0
+    return cnt
+  else:
+    return 0
 
-def fill_block(new_arr, route):
-    route.sort(key=lambda x:(x[1], -x[0]))
-    for fi, fj in route:
-        val = walls.popleft()
-        new_arr[fi][fj] = val
-    return new_arr
-
-
-def gain_score(g_arr):
-    visited = [[False] * 5 for _ in range(5)]
-    temp_ans = 0
-    temp_r = []
-    for gi in range(5):
-        for gj in range(5):
-            if not visited[gi][gj]:
-                visited[gi][gj] = True
-                a, r = bfs(gi, gj, visited, g_arr[gi][gj], g_arr)
-                if a > 0:
-                    for i in r:
-                        temp_r.append(i)
-                    temp_ans += a
-
-    if temp_ans > 0:
-        return [temp_ans, temp_r]
-    else:
-        return [0, 0]
-
-def bfs(bi, bj, visit, num, b_arr):
-    q = deque()
-    q.append((bi, bj))
-    r = [[bi, bj]]
-    while q:
-        si, sj= q.popleft()
-        for d in range(4):
-            ni, nj = si+di[d], sj+dj[d]
-            if 0<=ni<5 and 0<=nj<5 and visit[ni][nj] == False and b_arr[ni][nj] == num:
-                q.append((ni, nj))
-                r.append([ni, nj])
-                visit[ni][nj] = True
-
-    if len(r) >= 3:
-        return [len(r), r]
-
-    else:
-        return [0, []]
-
-
-
-di, dj = [0, 0, 1, -1], [1, -1, 0, 0]
 K, M = map(int, input().split())
 arr = [list(map(int, input().split())) for _ in range(5)]
-w = list(map(int, input().split()))
-walls = deque()
-for i in w:
-    walls.append(i)
+lst = list(map(int, input().split()))
+
+ans = []
 
 for _ in range(K):
-    score = 0
-    flag_stop = explore(arr)
-    if flag_stop == -1:
-        break
-    else:
-        score += flag_stop
-    # score = gain_score()
-    # if score == 0:
-    #     break
-    print(score, end=' ')
+  # 탐사
+  mx = 0
+  marr = []
+  for rot in range(1, 4):
+    for sj in range(3):
+      for si in range(3):
+        narr = [x[:] for x in arr]
+        for _ in range(rot):
+          narr = rotate(si, sj, narr)
+          t = count_clear(narr, 0)
+          if mx < t:
+            mx = t
+            marr = narr
+  if mx == 0:
+    break
+
+  # 유물 연쇄 획득
+  arr = marr
+  cnt = 0
+  while True:
+    t = count_clear(arr, 1)
+    if t == 0:
+      break
+    cnt+=t
+    # 채우기
+    for j in range(5):
+      for i in range(4,-1,-1):
+        if arr[i][j] == 0:
+          arr[i][j] = lst.pop(0)
+  ans.append(cnt)
+
+print(*ans)
