@@ -1,5 +1,4 @@
 import sys
-from copy import deepcopy
 input = sys.stdin.readline
 
 #(0,1):오른쪽 (1,0):아래쪽 (-1,0):위쪽 (0,-1):왼쪽
@@ -8,7 +7,7 @@ direction = [(0,1),(-1,0),(0,-1),(1,0)]
 direction2 = [(0,1),(1,0),(0,-1),(-1,0)]
 
 def pull(Map, N, M):
-    New_map = deepcopy(Map)
+    New_map = [row[:] for row in Map]
     current_to = [[0]* M for _ in range(N)]
     for i in range(N):
         for j in range(M):
@@ -30,7 +29,7 @@ def pull(Map, N, M):
 
 def trash(tonado_list, Map):
     tonado_list = sorted(tonado_list, key=lambda x: x[0])
-    New_map = deepcopy(Map)
+    New_map = [row[:] for row in Map]
     visited = [[0]* M for _ in range(N)]
     
     for index, tonado in enumerate(tonado_list):
