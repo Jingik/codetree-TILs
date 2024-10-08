@@ -1,112 +1,83 @@
-import sys
-from collections import deque
+def rotate(si, sj, arr):
+  narr = [x[:] for x in arr]
+  for i in range(3):
+    for j in range(3):
+      narr[si+i][sj+j] = arr[si+3-1-j][sj+i]
+  return narr
 
-input = sys.stdin.readline
+def count_clear(arr, clr):
+  v = [[0]*5 for _ in range(5)]
+  cnt = 0
+  for i in range(5):
+    for j in range(5):
+      if v[i][j] == 0:
+        v[i][j] = 1
+        t = bfs(arr, i, j, v, clr)
+        cnt+=t
+  return cnt
 
-# 상하좌우 탐색 방향 설정
-direction = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+def bfs(arr, si, sj, v, clr):
+  q = []
+  cnt = 1
+  sset = set()
 
-# 90도 회전 함수
-def rotate_90(matrix, x, y):
-    # 3x3 부분 추출 및 회전
-    new_matrix = [row[:] for row in matrix]  # 깊은 복사
-    for i in range(3):
-        for j in range(3):
-            new_matrix[x + j][y + 2 - i] = matrix[x + i][y + j]  # 90도 회전 변환
-    return new_matrix
+  q.append((si, sj))
+  sset.add((si, sj))
 
-# BFS를 사용해 연결된 유물 찾기 및 제거
-def bfs(matrix, x, y, visited):
-    queue = deque([(x, y)])
-    visited[x][y] = True
-    value = matrix[x][y]
-    count = 1
-    coords = [(x, y)]
-    
-    while queue:
-        cx, cy = queue.popleft()
-        for dx, dy in direction:
-            nx, ny = cx + dx, cy + dy
-            if 0 <= nx < 5 and 0 <= ny < 5 and not visited[nx][ny] and matrix[nx][ny] == value:
-                visited[nx][ny] = True
-                queue.append((nx, ny))
-                coords.append((nx, ny))
-                count += 1
-    
-    if count >= 3:
-        for i, j in coords:
-            matrix[i][j] = 0  # 유물 제거
-        return count
+  while q:
+    ci, cj = q.pop(0)
+    for di, dj in ((-1,0),(0,1),(1,0),(0,-1)):
+      ni, nj = ci+di, cj+dj
+      if 0<=ni<5 and 0<=nj<5 and v[ni][nj]==0 and arr[ci][cj]==arr[ni][nj]:
+        q.append((ni, nj))
+        v[ni][nj] = 1
+        sset.add((ni, nj))
+        cnt+=1
+
+  if cnt>2:
+    if clr == 1:
+      for i, j in sset:
+        arr[i][j] = 0
+    return cnt
+  else:
     return 0
 
-# 빈칸을 벽면의 유물로 채우기
-def refill(matrix, bom):
-    for j in range(5):
-        empty_slots = []
-        for i in range(4, -1, -1):
-            if matrix[i][j] == 0:
-                empty_slots.append(i)
-        for empty in empty_slots:
-            if bom:
-                matrix[empty][j] = bom.popleft()
-
-# 시뮬레이션 함수
-def simulate(K, M, matrix, bom):
-    bom = deque(bom)
-
-    for _ in range(K):
-        best_score = 0
-        best_matrix = None
-
-        # 모든 가능한 3x3 격자 회전
-        for x in range(3):
-            for y in range(3):
-                for _ in range(3):  # 90도씩 3번 회전
-                    rotated_matrix = rotate_90(matrix, x, y)
-                    visited = [[False] * 5 for _ in range(5)]
-                    score = 0
-
-                    # BFS로 유물 제거
-                    for i in range(5):
-                        for j in range(5):
-                            if not visited[i][j] and rotated_matrix[i][j] != 0:
-                                score += bfs(rotated_matrix, i, j, visited)
-
-                    if score > best_score:
-                        best_score = score
-                        best_matrix = rotated_matrix
-
-        if best_score == 0:
-            break
-
-        # 최적의 회전 결과 반영
-        matrix = best_matrix
-        total_score = best_score
-
-        # 빈칸 채우기
-        refill(matrix, bom)
-
-        # 연쇄 제거 처리
-        while True:
-            visited = [[False] * 5 for _ in range(5)]
-            chain_score = 0
-            for i in range(5):
-                for j in range(5):
-                    if not visited[i][j] and matrix[i][j] != 0:
-                        chain_score += bfs(matrix, i, j, visited)
-
-            if chain_score == 0:
-                break
-            total_score += chain_score
-            refill(matrix, bom)
-
-        # 모든 연쇄 제거가 끝나면 결과 출력
-        print(total_score, end=" ")
-
-# 입력 처리
 K, M = map(int, input().split())
-matrix = [list(map(int, input().split())) for _ in range(5)]
-bom = list(map(int, input().split()))
+arr = [list(map(int, input().split())) for _ in range(5)]
+lst = list(map(int, input().split()))
 
-# 시뮬레이션 실행
-simulate(K, M, matrix, bom)
+ans = []
+
+for _ in range(K):
+  # 탐사
+  mx = 0
+  marr = []
+  for rot in range(1, 4):
+    for sj in range(3):
+      for si in range(3):
+        narr = [x[:] for x in arr]
+        for _ in range(rot):
+          narr = rotate(si, sj, narr)
+          t = count_clear(narr, 0)
+          if mx < t:
+            mx = t
+            marr = narr
+  if mx == 0:
+    break
+
+  # 유물 연쇄 획득
+  arr = marr
+  cnt = 0
+  while True:
+    t = count_clear(arr, 1)
+    if t == 0:
+      break
+    cnt+=t
+    # 채우기
+    for j in range(5):
+      for i in range(4,-1,-1):
+        if arr[i][j] == 0:
+          arr[i][j] = lst.pop(0)
+  ans.append(cnt)
+
+print(*ans)
