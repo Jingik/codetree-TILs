@@ -19,6 +19,7 @@ def comb(arr, n):
     return result
 
 def BFS(selected_hospitals, N, Map, empty_count):
+    global min_time
     queue = deque()
     visited = [[-1] * N for _ in range(N)]
 
@@ -43,7 +44,9 @@ def BFS(selected_hospitals, N, Map, empty_count):
                 if Map[nx][ny] == 0:  # 바이러스가 있던 곳이면
                     filled_count += 1
                     max_time = max(max_time, time + 1)
-
+                    if max_time >= min_time:
+                        return min_time
+                    
     # 모든 빈 칸에 백신이 퍼졌는지 확인
     if filled_count == empty_count:
         return max_time
@@ -51,6 +54,7 @@ def BFS(selected_hospitals, N, Map, empty_count):
         return float('inf')  # 모든 빈칸에 백신을 퍼뜨릴 수 없는 경우
 
 def solve():
+    global min_time
     N, M = map(int, input().split())
     Map = [list(map(int, input().split())) for _ in range(N)]
     
@@ -67,7 +71,6 @@ def solve():
 
     # 모든 병원 위치에서 M개의 조합을 선택
     comb_list = comb(hospitals, M)
-    min_time = float('inf')
 
     # 각 병원 조합에 대해 BFS 실행
     for selected_hospitals in comb_list:
@@ -81,4 +84,5 @@ def solve():
         print(min_time)
 
 # 문제 해결 함수 호출
+min_time = float('inf')
 solve()
