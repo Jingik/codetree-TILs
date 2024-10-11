@@ -22,16 +22,16 @@ def is_valid(x, y, N):
 # 주사위 회전 함수
 def roll_dice(dir):
     global dice
-    if dir == (0,1):  # 우 (오른쪽 이동)
+    if dir == (0,1):  # 오른쪽 이동
         dice = [dice[3], dice[1], dice[0], dice[5], dice[4], dice[2]]
-    elif dir == (1,0):  # 하 (아래쪽 이동)
+    elif dir == (1,0):  # 아래쪽 이동
         dice = [dice[4], dice[0], dice[2], dice[3], dice[5], dice[1]]
-    elif dir == (0,-1):  # 좌 (왼쪽 이동)
+    elif dir == (0,-1):  # 왼쪽 이동
         dice = [dice[2], dice[1], dice[5], dice[0], dice[4], dice[3]]
-    elif dir == (-1,0):  # 상 (위쪽 이동)
+    elif dir == (-1,0):  # 위쪽 이동
         dice = [dice[1], dice[5], dice[2], dice[3], dice[0], dice[4]]
 
-# BFS로 인접한 같은 숫자 탐색
+# BFS로 인접한 같은 숫자를 찾기
 def bfs(x, y, N, Map):
     visited = [[False] * N for _ in range(N)]
     queue = deque([(x, y)])
@@ -62,26 +62,24 @@ def dice_move(N, M, Map):
 
         # 격자판을 벗어나면 반사
         if not is_valid(nx, ny, N):
-            current_direction = direction_mirr[current_direction]
+            current_direction = direction_mirr[current_direction]  # 반사 방향으로 변경
             nx, ny = x + current_direction[0], y + current_direction[1]
 
-        # 주사위 회전
+        # 주사위를 굴리고 새로운 위치로 이동
         roll_dice(current_direction)
+        x, y = nx, ny
 
-        # 현재 위치의 점수 계산 (이동 후 위치에서 계산)
-        total_score += bfs(nx, ny, N, Map)
+        # BFS로 점수 계산
+        total_score += bfs(x, y, N, Map)
 
         # 주사위 아랫면과 격자판 숫자 비교
-        dice_bottom = dice[1]  # 주사위의 아랫면 (dice[1]이 아랫면)
-        map_value = Map[nx][ny]
+        dice_bottom = dice[1]  # 주사위의 아랫면
+        map_value = Map[x][y]
 
         if dice_bottom > map_value:
-            current_direction = direction_right[current_direction]
+            current_direction = direction_right[current_direction]  # 시계 방향
         elif dice_bottom < map_value:
-            current_direction = direction_left[current_direction]
-
-        # 주사위 위치 업데이트
-        x, y = nx, ny
+            current_direction = direction_left[current_direction]  # 반시계 방향
 
     return total_score
 
