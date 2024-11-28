@@ -8,9 +8,11 @@ def isvalid(x, y, n):
     return 0 <= x < n and 0 <= y < n
 
 def move_piece(x, y, nx, ny, start_idx, board):
-    # 이동할 위치로 말을 옮김
+    # 이동할 말들을 추출
     moving_pieces = board[x][y][start_idx:]
+    # 원래 위치에서 제거
     board[x][y] = board[x][y][:start_idx]
+    # 이동할 위치에 추가
     board[nx][ny].extend(moving_pieces)
     return len(board[nx][ny])
 
@@ -43,7 +45,8 @@ def simulate_game(n, k, board_color, pieces):
                 new_stack = move_piece(x, y, nx, ny, board[x][y].index(i), board)
             # 빨간색 칸
             elif board_color[nx][ny] == 1:
-                board[x][y] = board[x][y][:board[x][y].index(i)] + list(reversed(board[x][y][board[x][y].index(i):]))
+                idx = board[x][y].index(i)
+                board[x][y] = board[x][y][:idx] + list(reversed(board[x][y][idx:]))
                 new_stack = move_piece(x, y, nx, ny, board[x][y].index(i), board)
 
             # 말 정보 업데이트
