@@ -1,118 +1,184 @@
-import sys
-#sys.stdin = open('승자독식 모노폴리.txt','r')
+DIR_NUM = 4
+EMPTY = (401, 401)
+EMPTY_NUM = 401
 
-n,m,k = map(int,input().split())
-dx=[0,-1,1,0,0]
-dy=[0,0,0,-1,1]
-maps=[list(map(int,input().split())) for _ in range(n)]
-player_dir = {}
-player_dirs = list(map(int,input().split()))
-player_four_dir = [ [] for _ in range(m+1)]
+# 변수 선언 및 입력:
+n, m, k = tuple(map(int, input().split()))
+given_map = [
+    list(map(int, input().split()))
+    for _ in range(n)
+]
+next_dir = [
+    [
+        [0 for _ in range(DIR_NUM)]
+        for _ in range(DIR_NUM)
+    ]
+    for _ in range(m + 1)
+]
 
-contract_map = [ [(0,0) for _ in range(n)] for _ in range(n)]
-for ply in range(len(player_dirs)):
-    plys = player_dirs[ply]
-    player_dir[ply+1] = plys
+player = [
+    [EMPTY for _ in range(n)]
+    for _ in range(n)
+]
+next_player = [
+    [EMPTY for _ in range(n)]
+    for _ in range(n)
+]
 
-for peo in range(m) :
-    for _ in range(4) :
-        a,b,c,d = map(int,input().split())
-        player_four_dir[peo+1].append([a,b,c,d])
+contract = [
+    [EMPTY for _ in range(n)]
+    for _ in range(n)
+]
 
-def debug() :
-    print('계약맵')
-    for k in contract_map:
-        print(*k)
-    print('일반맵')
-    for x in maps:
-        print(*x)
-    print('플레이어 보는방향')
-    print(player_dir)
-
-
-def in_range(x,y):
-    return 0<=x<n and 0<=y<n
-
-def player_contract():
-    #해당위치에 서잇는 플레이어들 계약 시키기.
-    for i in range(n) :
-        for j in range(n) :
-            if maps[i][j] >0 : #사람이라면
-                player_num = maps[i][j]
-                contract_map[i][j] = (player_num,k)
-    return
-
-def player_move():
-    clear_arr=[]
-    update_arr = []
-    for i in range(n) :
-        for j in range(n) :
-            if maps[i][j] > 0 : #사람이면
-                possible = False
-                clear_arr.append((i,j))
-                p_num = maps[i][j]
-                p_dir = player_dir[p_num]
-
-                speicial_dir = player_four_dir[p_num]  # 해당 플레이어에 대한 4가지 방향값
-                speicial_dir_2 = speicial_dir[p_dir - 1]
-                for nums in speicial_dir_2:
-                    nx,ny = i+dx[nums],j+dy[nums]
-                    if in_range(nx,ny) and contract_map[nx][ny] == (0,0) :
-                        update_arr.append((nx,ny,p_num))
-                        player_dir[p_num] = nums
-                        possible = True
-                        break
-                if possible == False:
-                # 여기는 방향안돼, 주변(0,0)없어.
-                # 인접 4방향 중 본인이 독점계약한 땅으로 이동.
-                    for nums in speicial_dir_2:
-                        nx,ny = i+dx[nums],j+dy[nums]
-                        if in_range(nx,ny):
-                            next_num,_ = contract_map[nx][ny]
-                            if next_num == p_num :
-                                update_arr.append((nx,ny,p_num))
-                                player_dir[p_num] = nums
-                                break
-                # 인접한 4방향중 내가 독점계약한 땅으로
+elapsed_time = 0
 
 
-    update_arr.sort(key = lambda x:(-x[2]))
-    for xx,yy in clear_arr:
-        maps[xx][yy] = 0
-    for xxx,yyy,pp in update_arr:
-        maps[xxx][yyy]=pp
-    contract_reduce(clear_arr)
-    return
-def contract_reduce(clear_arr):
+def in_range(x, y):
+    return 0 <= x and x < n and 0 <= y and y < n
+
+
+def can_go(x, y, target_num):
+    if not in_range(x, y):
+        return False
+    
+    # target 번호와 contract 번호가 일치한 
+    # 경우에만 이동이 가능합니다.
+    contract_num, _ = contract[x][y]
+    return contract_num == target_num
+
+
+def next_pos(x, y, curr_dir):
+    dxs, dys = [-1, 1, 0, 0], [0, 0, -1, 1]
+    num, _ = player[x][y]
+
+    # Case 1.
+    # 먼저 독점계약을 맺지 않은 공간이 있다면 
+    # 우선순위에 따라 그곳으로 이동합니다.
+    for move_dir in next_dir[num][curr_dir]:
+        nx, ny = x + dxs[move_dir], y + dys[move_dir]
+        
+        if can_go(nx, ny, EMPTY_NUM):
+            return (nx, ny, move_dir)
+    
+    # Case 2.
+    # 인접한 곳이 모두 독점계약을 맺은 곳이라면
+    # 우선순위에 따라 그 중 본인이 독점계약한 땅으로 이동합니다.
+    for move_dir in next_dir[num][curr_dir]:
+        nx, ny = x + dxs[move_dir], y + dys[move_dir]
+        
+        if can_go(nx, ny, num):
+            return (nx, ny, move_dir)
+
+
+# (x, y) 위치에 새로운 플레이어가 들어왔을 때 갱신을 진행합니다.
+def update(x, y, new_player):
+    # 새로 들어온 플레이어가 더 우선순위가 높을 경우에만
+    # (x, y)위치에 해당 플레이어가 위치하게 됩니다.
+    # Tip.
+    # Empty인 위치에서는 항상 update가 되게끔
+    # 미리 Empty의 num 값에 401를 셋팅해놨습니다.
+    if next_player[x][y] > new_player:
+        next_player[x][y] = new_player
+
+
+def move(x, y):
+    num, curr_dir = player[x][y]
+    
+    # Step1. 현재 플레이어의 다음 위치와 방향을 구합니다.
+    nx, ny, move_dir = next_pos(x, y, curr_dir)
+    
+    # Step2. 플레이어를 옮겨줍니다.
+    update(nx, ny, (num, move_dir))
+
+
+def dec_contract(x, y):
+    num, remaining_period = contract[x][y]
+    
+    # 남은 기간이 1이면 다시 Empty가 됩니다.
+    if remaining_period == 1:
+        contract[x][y] = EMPTY
+    # 그렇지 않다면 기간이 1 줄어듭니다.
+    else:
+        contract[x][y] = (num, remaining_period - 1)
+
+
+def add_contract(x, y):
+    num, _ = player[x][y];
+    contract[x][y] = (num, k)
+
+
+def simulate():
+    # Step1. next_player를 초기화합니다.
     for i in range(n):
         for j in range(n):
-            a, b = contract_map[i][j]
-            if  a != 0 :
-                if b == 1 :
-                    contract_map[i][j] = 0, 0
-                else :
-                    contract_map[i][j] = a,b-1
+            next_player[i][j] = EMPTY
+    
+    # Step2. 각 플레이어들을 한 칸씩 움직여줍니다.
+    for i in range(n):
+        for j in range(n):
+            if player[i][j] != EMPTY:
+                move(i, j)
 
-    return
+    # Step3. next_grid 값을 grid로 옮겨줍니다.
+    for i in range(n):
+        for j in range(n):
+            player[i][j] = next_player[i][j]
+    
+    # Step4. 남은 contract기간을 1씩 감소시킵니다.
+    for i in range(n):
+        for j in range(n):
+            if contract[i][j] != EMPTY:
+                dec_contract(i, j)
+    
+    # Step5. 새로운 contract를 갱신해줍니다.
+    for i in range(n):
+        for j in range(n):
+            if player[i][j] != EMPTY:
+                add_contract(i, j)
 
-def check_one():
-    count =0
-    for i in range(n) :
-        for j in range(n) :
-            if maps[i][j] > 0 :
-                count+=1
-    return count
 
-ok = False
-#debug()
-for rounds in range(1,1001) :
-    player_contract()
-    player_move()
-    #debug()
-    #print('라운드:',rounds)
-    if check_one() == 1 :
-        print(rounds)
-        ok = True
-        break
-if ok == False:
-    print(-1)
+def end():
+    if elapsed_time >= 1000:
+        return True
+    
+    for i in range(n):
+        for j in range(n):
+            if player[i][j] == EMPTY:
+                continue
+            
+            num, _ = player[i][j]
+            
+            if num != 1:
+                return False
+    
+    return True
+
+
+# 플레이어 마다 초기 방향을 입력받아 설정해줍니다.
+init_dirs = list(map(int, input().split()))
+for num, move_dir in enumerate(init_dirs, start=1):
+    for i in range(n):
+        for j in range(n):
+            if given_map[i][j] == num:
+                player[i][j] = (num, move_dir - 1)
+                contract[i][j] = (num, k)
+
+
+# 플레이어 마다 방향 우선순위를 설정합니다.
+for num in range(1, m + 1):
+    for curr_dir in range(DIR_NUM):
+        dirs = list(map(int, input().split()))
+        for i, move_dir in enumerate(dirs):
+            next_dir[num][curr_dir][i] = move_dir - 1
+
+# 시간이 1000이 넘지 않고
+# 1번이 아닌 플레이어가 남아 있다면
+# 계속 시뮬레이션을 반복합니다.
+while not end():
+    simulate()
+    elapsed_time += 1
+
+if elapsed_time >= 1000:
+    elapsed_time = -1
+
+print(elapsed_time)
