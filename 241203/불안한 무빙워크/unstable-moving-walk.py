@@ -39,14 +39,9 @@ def first_move_line(Line, visited):
     return Line, visited
 
 def second_move_line(n, k, Line, visited):
-    # 맨 처음 한 칸 올라가기
-    if visited[0] == False and Line[0] > 0:
-        visited[0] = True
-        Line[0] -= 1
-    
     # 뒤에서 부터 for 문 돌리기 먼저 올라간 사람부터 하고 맨처음 올라갔을 때는 제외
     for index in range(n-2, 0, -1):
-        if visited[index] == True:
+        if visited[index] == True and visited[index + 1] == False:
             if Line[index + 1] > 0:
                 visited[index] = False
                 Line[index + 1] -= 1
@@ -61,6 +56,12 @@ def second_move_line(n, k, Line, visited):
             check_end += 1
         if check_end >= k:
             return Line, visited, False
+    
+    # 맨 처음 한 칸 올라가기
+    if Line[0] > 0:
+        visited[0] = True
+        Line[0] -= 1
+    
     return Line, visited, True
 
 def simual(n, k, Line):
