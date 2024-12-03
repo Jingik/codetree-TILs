@@ -51,7 +51,7 @@ def find_nearest_customer(start, current_battery, grid, n, customer_locations):
 
     # 후보가 없다면 실패 처리
     if not candidates:
-        return -1, -1, -1
+        return -1, -1, -1, -1
 
     # 거리, 행, 열 순으로 가장 적합한 승객 선택
     candidates.sort()
