@@ -34,95 +34,84 @@
 
 from collections import defaultdict
 
-Direction = [(0,1), (1, 0), (-1, 0), (0, -1)]
+directions = [(0, 1), (1, 0), (-1, 0), (0, -1)]
 
-def isvalid(x, y, n):
+def is_valid(x, y, n):
     return 0 <= x < n and 0 <= y < n
 
-# 0일때 1일때 2일때 3일때 4일때 인접한 경우를 전부 다 찾고 여기서 가장 큰거를 리스트로 반환
-def check_one(check_list, grid, check, n, total_list):
-    # check_student = defaultdict(list)
-    # 뒤에서 부터 확인해서 있으면 바로 break
-    check_student = {4 : [], 3 : [], 2 : [], 1 : [], 0 : []}
+def find_best_position(check_list, grid, n):
+    max_adjacent = -1
+    max_empty = -1
+    candidates = []
+
     for x in range(n):
         for y in range(n):
-            check_num = 0
-            if grid[x][y] == False:
-                for dir in Direction:
-                    nx, ny = x + dir[0], y + dir[1]
-                    if isvalid(nx, ny, n) and grid[nx][ny] in check_list:
-                        check_num += 1
-                check_student[check_num].append([x, y])
-            
-    for index, value in check_student.items():
-        check_num = len(value) 
-        if check_num > 0:
-            total_list = value
-            if check_num == 1:
-                check = True
-            break
-    return total_list, check
+            if grid[x][y]:
+                continue
 
-def check_two(grid, check, n, total_list):
-    if check == False:   
-        check_student = {4 : [], 3 : [], 2 : [], 1 : [], 0 : []}
-        for x, y in total_list:
-            check_num = 0
-            if grid[x][y] == False:
-                for dir in Direction:
-                    nx, ny = x + dir[0], y + dir[1]
-                    if isvalid(nx, ny, n) and grid[nx][ny] == False:
-                        check_num += 1
-                check_student[check_num].append([x, y])
-                
-        for index, value in check_student.items():
-            check_num = len(value) 
-            if check_num > 0:
-                total_list = value
-                if check_num == 1:
-                    check = True
-                break
-    return total_list, check
-            
-def check_three(check, total_list):
-    if check == False:
-        total_list = sorted(total_list, key = lambda x : (x[0], x[1]))
-    return total_list, check
+            adjacent_count = 0
+            empty_count = 0
 
-def total_number(grid, Input_student, total_num):
-    check_number = {0 : 0, 1 : 1, 2 : 10, 3 :100, 4 : 1000}
+            for dx, dy in directions:
+                nx, ny = x + dx, y + dy
+                if is_valid(nx, ny, n):
+                    if grid[nx][ny] in check_list:
+                        adjacent_count += 1
+                    elif not grid[nx][ny]:
+                        empty_count += 1
+
+            if (adjacent_count > max_adjacent or
+                (adjacent_count == max_adjacent and empty_count > max_empty)):
+                max_adjacent = adjacent_count
+                max_empty = empty_count
+                candidates = [(x, y)]
+            elif adjacent_count == max_adjacent and empty_count == max_empty:
+                candidates.append((x, y))
+
+    candidates.sort()  # Sort by row and column
+    return candidates[0]  # Return the best position
+
+def calculate_satisfaction(grid, input_student, n):
+    satisfaction_score = {0: 0, 1: 1, 2: 10, 3: 100, 4: 1000}
+    total_score = 0
+
     for x in range(n):
         for y in range(n):
-            check = 0
-            check_list = Input_student[grid[x][y]]
-            for dir in Direction:
-                nx, ny = x + dir[0], y + dir[1]
-                if isvalid(nx, ny, n) and grid[nx][ny] in check_list:
-                    check += 1
-            total_num += check_number[check]
-    return total_num
+            if not grid[x][y]:
+                continue
 
-def simual(n, Input_student, student):
-    grid = [[False] * n for _ in range(n)]
-    total_num = 0
-    for start in student:
-        check = False
-        total_list = []
-        check_list = Input_student[start]
-        total_list, check = check_one(check_list, grid, check, n, total_list)
-        total_list, check = check_two(grid, check, n, total_list)
-        total_list, check = check_three(check, total_list)
-        grid[total_list[0][0]][total_list[0][1]] = start
-    
-    total_num = total_number(grid, Input_student, total_num)
-    return total_num
+            student = grid[x][y]
+            check_list = input_student[student]
+            adjacent_count = 0
 
+            for dx, dy in directions:
+                nx, ny = x + dx, y + dy
+                if is_valid(nx, ny, n) and grid[nx][ny] in check_list:
+                    adjacent_count += 1
+
+            total_score += satisfaction_score[adjacent_count]
+
+    return total_score
+
+def simulate(n, input_student, student_order):
+    grid = [[None] * n for _ in range(n)]
+
+    for student in student_order:
+        check_list = input_student[student]
+        x, y = find_best_position(check_list, grid, n)
+        grid[x][y] = student
+
+    return calculate_satisfaction(grid, input_student, n)
+
+# Input
 n = int(input())
-Input_student = defaultdict(list)
-student = []
-for _ in range(n * n):
-    x, a, b, c, d = map(int, input().split())
-    Input_student[x] = [a, b, c, d]
-    student.append(x)
+input_student = defaultdict(list)
+student_order = []
 
-print(simual(n, Input_student, student))
+for _ in range(n * n):
+    data = list(map(int, input().split()))
+    student_order.append(data[0])
+    input_student[data[0]] = data[1:]
+
+# Simulation
+print(simulate(n, input_student, student_order))
