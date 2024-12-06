@@ -1,154 +1,181 @@
-# n * n 크기의 격자에서 진행
-# 무기가 없는 빈격자에 플레이어들이 위치하며 플레이어는 초기 능력치를 가짐
-# 총의 경우 공격력을 플레이어의 경우 초기능력치 노란색은 플레이어 번호
-## 게임 시작
-# 1-1. 본인이 향하고 있는 방향대로 한 칸만큼 이동 -> 해당 방향을 나갈 때는 정반대 방향으로 이동
-# 2-1 이동한 방향에 플레이어가 없다면 총이 있는지 확인하고 총이 있는 경우 총 획득
-# 2-1-1 이미 총이 있는 경우 더 공격력이 쏀 총을 획득하고 나머지 총들은 격자에 다시 둔다
-# 2-2-1 이동방향에 플레이어가 있는 경우 싸운다.
-# 2-2-1-1 초기 능력치와 가지고 있는 총의 공격력의 합으로 비교한다.
-# 2-2-1-1 수치가 같을 경우 초기 능력치가 큰사람이 이기고 이긴 플레이어는 초기능력치와 가지고 있는 총의 공격력 합의 차이만큼의 점수 획득
-# 2-2-2 진 플레이어는 본인이 가지고 있는 총을 격자에 내려놓고, 한 칸 이동 | 다른 플레이어가 있는 경우 오른쪽으로 90도 회전하여 빈칸에 이동
-# 2-2-2-1 총이 있는 경우 가장 공격력이 높은 총을 획득하고 격자에 내려 놓는다
-# 2-2-3 이긴 플레이어는 승리한 칸에서 가장 높은 총을 획득하고 나머지 총들을 내려놓는다
-## 1라운드이고 이게 끝나고 각 플레이어 별로 점수
+import heapq
+EMPTY = (-1, -1, -1, -1, -1, -1)
 
-## 필요함수
-# def first_rule
-## 방향만큼 한 칸 씩 이동  | 넘어갈 때는 정반대 방향으로 움직임 구현
-# def second_rule
-## 플레이어가 있는경우 싸움 | 초기 능력치 + 총의 공격력
-# def simual
-## 시뮬레이션
-# def isvalid
-## 격자 나가는지 확인
+# 변수 선언 및 입력:
+n, m, k = tuple(map(int, input().split()))
 
-## 필요변수
-# score_list : 점수 기록용
-# grid : 해당 맵
-# player_list : 각 플레이어 능력치 | 총
-# n : 격자크기
-# m : 플레이어 수
-# k : 라운드
-# Direction : 방향
-# Directions_reverse : 반대 방향
-# player_location : 빠른 계산을 위한
+# 각 칸마다 놓여있는 총 목록을 관리합니다.
+gun = [
+    [[] for _ in range(n)]
+    for _ in range(n)
+]
+for i in range(n):
+    nums = list(map(int, input().split()))
+    for j in range(n):
+        # 총이 놓여 있는 칸입니다.
+        if nums[j] != 0:
+            heapq.heappush(gun[i][j],-1*nums[j])
+            # gun[i][j].append(nums[j])
 
-# Directions for movement (Up, Right, Down, Left)
-DIRECTIONS = [(-1, 0), (0, 1), (1, 0), (0, -1)]
-REVERSE_DIRECTION = {0: 2, 1: 3, 2: 0, 3: 1}
+# 각 칸마다 플레이어 정보를 관리합니다.
+# 순서대로 (num, x, y, d, s, a) 정보를 관리합니다.
+# (x, y)위치에서 방향 d를 보고 있으며
+# 초기 능력치가 s인 num번 플레이어가
+# 공격력이 a인 총을 들고 있음을 뜻합니다.
+# 총이 없으면 a는 0입니다.
+players = []
+for i in range(m):
+    x, y, d, s = tuple(map(int, input().split()))
+    players.append((i, x - 1, y - 1, d, s, 0))
 
-def is_valid(x, y, n):
-    return 0 <= x < n and 0 <= y < n
+# 입력으로 주어지는
+# 방향 순서대로
+# dx, dy를 정의합니다.
+# ↑, →, ↓, ←
+dxs = [-1, 0, 1, 0]
+dys = [0, 1, 0, -1]
 
-def move_player(player, n, grid):
-    x, y, d = player[0], player[1], player[2]
-    nx, ny = x + DIRECTIONS[d][0], y + DIRECTIONS[d][1]
-    # Check bounds
-    if not is_valid(nx, ny, n):
-        d = REVERSE_DIRECTION[d]
-        nx, ny = x + DIRECTIONS[d][0], y + DIRECTIONS[d][1]
-    player[0], player[1], player[2] = nx, ny, d
+# 플레이어들의 포인트 정보를 기록합니다.
+points = [0] * m
 
 
-def handle_weapons(grid, x, y, weapon):
-    if grid[x][y]:
-        grid[x][y] = sorted(grid[x][y])  # Sort weapons by power
-        if weapon < grid[x][y][-1]:
-            if weapon == 0:
-                weapon = grid[x][y].pop()
-            else:
-                weapon, grid[x][y][-1] = grid[x][y][-1], weapon
-    return weapon
+# (x, y)가 격자를 벗어나는지 확인합니다.
+def in_range(x, y):
+    return 0 <= x and x < n and 0 <= y and y < n
 
-def fight(grid, player_info, player_a, player_b, scores, n, location_map):
-    # Retrieve player stats
-    x1, y1, d1, s1, w1 = player_info[player_a]
-    x2, y2, d2, s2, w2 = player_info[player_b]
-    power_a = s1 + w1
-    power_b = s2 + w2
 
-    if power_a > power_b or (power_a == power_b and s1 > s2):
-        winner, loser = player_a, player_b
+# 현재 (x, y)위치에서 방향 d를 보고 있을 때
+# 그 다음 위치와 방향을 찾아줍니다.
+def get_next(x, y, d):
+    nx, ny = x + dxs[d], y + dys[d]
+    # 격자를 벗어나면
+    # 방향을 뒤집어
+    # 반대 방향으로 한 칸 이동합니다.
+    if not in_range(nx, ny):
+        # 반대 방향 : 0 <. 2 / 1 <. 3
+        d = (d + 2) if d < 2 else (d - 2)
+        nx, ny = x + dxs[d], y + dys[d]
+
+    return (nx, ny, d)
+
+
+# 해당 칸에 있는 Player를 찾아줍니다.
+# 없다면 EMPTY를 반환합니다.
+def find_player(pos):
+    for i in range(m):
+        _, x, y, _, _, _ = players[i]
+        if pos == (x, y):
+            return players[i]
+
+    return EMPTY
+
+
+# Player p의 정보를 갱신해줍니다.
+def update(p):
+    num, _, _, _, _, _ = p
+
+    # Player의 위치를 찾아
+    # 값을 갱신해줍니다.
+    for i in range(m):
+        num_i, _, _, _, _, _ = players[i]
+
+        if num_i == num:
+            players[i] = p
+            break
+
+
+# 플레이어 p를 pos 위치로 이동시켜줍니다.
+def move(p, pos):
+    num, x, y, d, s, a = p
+    nx, ny = pos
+
+    # 가장 좋은 총으로 갱신해줍니다.
+    heapq.heappush(gun[nx][ny], -1*a)
+
+    a = -1* heapq.heappop(gun[nx][ny])
+
+
+    p = (num, nx, ny, d, s, a)
+    update(p)
+
+
+# 진 사람의 움직임을 진행합니다.
+# 결투에서 패배한 위치는 pos입니다.
+def loser_move(p):
+    num, x, y, d, s, a = p
+
+    # 먼저 현재 위치에 총을 내려놓게 됩니다.
+    # gun[x][y].append(a)
+    heapq.heappush(gun[x][y], -1*a)
+
+    # 빈 공간을 찾아 이동하게 됩니다.
+    # 현재 방향에서 시작하여
+    # 90'씩 시계방향으로
+    # 회전하다가
+    # 비어있는 최초의 곳으로 이동합니다.
+    for i in range(4):
+        ndir = (d + i) % 4
+        nx, ny = x + dxs[ndir], y + dys[ndir]
+        if in_range(nx, ny) and find_player((nx, ny)) == EMPTY:
+            p = (num, x, y, ndir, s, 0)
+            move(p, (nx, ny))
+            break
+
+
+# p2과 p2가 pos에서 만나 결투를 진행합니다.
+def duel(p1, p2, pos):
+    num1, _, _, d1, s1, a1 = p1
+    num2, _, _, d2, s2, a2 = p2
+
+    # (초기 능력치 + 총의 공격력, 초기 능력치) 순으로 우선순위를 매겨 비교합니다.
+
+    # p1이 이긴 경우
+    if (s1 + a1, s1) > (s2 + a2, s2):
+        # p1은 포인트를 얻게 됩니다.
+        points[num1] += (s1 + a1) - (s2 + a2)
+        # p2는 진 사람의 움직임을 진행합니다.
+        loser_move(p2)
+        # 이후 p1은 이긴 사람의 움직임을 진행합니다.
+        move(p1, pos)
+    # p2가 이긴 경우
     else:
-        winner, loser = player_b, player_a
+        # p2는 포인트를 얻게 됩니다.
+        points[num2] += (s2 + a2) - (s1 + a1)
+        # p1은 진 사람의 움직임을 진행합니다.
+        loser_move(p1)
+        # 이후 p2는 이긴 사람의 움직임을 진행합니다.
+        move(p2, pos)
 
-    # Update scores
-    scores[winner] += abs(power_a - power_b)
 
-    # Loser drops weapon and moves
-    loser_x, loser_y, loser_d, loser_s, loser_w = player_info[loser]
-    grid[loser_x][loser_y].append(loser_w)
-    player_info[loser][4] = 0
+# 1라운드를 진행합니다.
+def simulate():
+    # 첫 번째 플레이어부터 순서대로 진행합니다.
+    for i in range(m):
+        num, x, y, d, s, a = players[i]
 
-    while True:
-        nx, ny = loser_x + DIRECTIONS[loser_d][0], loser_y + DIRECTIONS[loser_d][1]
-        if is_valid(nx, ny, n) :
-            check = True
-            for p in player_info.values():
-                if nx == p[0] and ny == p[1]:
-                    check = False
-                    break
-            if check == True:
-                player_info[loser][:2] = [nx, ny]
-                player_info[loser][2] = loser_d
-                player_info[loser][4] = handle_weapons(grid, nx, ny, 0)
-                break
-        loser_d = (loser_d + 1) % 4  # Rotate 90 degrees
+        # Step 1-1. 현재 플레이어가 움직일 그 다음 위치와 방향을 구합니다.
+        nx, ny, ndir = get_next(x, y, d)
 
-    # Winner picks the best weapon in the current location
-    winner_x, winner_y = player_info[winner][0], player_info[winner][1]
-    player_info[winner][4] = handle_weapons(grid, winner_x, winner_y, player_info[winner][4])
-    
-    location_map[(winner_x, winner_y)] = winner
-    location_map[(loser_x, loser_y)] = loser
+        # 해당 위치에 있는 전 플레이어 정보를 얻어옵니다.
+        next_player = find_player((nx, ny))
 
-    
-def simulate_round(grid, player_info, scores, n, location_map):
-    # Iterate over players in sorted order to ensure consistent updates
-    for player_id in sorted(player_info.keys()):
-        # 기존 위치 제거
-        current_position = (player_info[player_id][0], player_info[player_id][1])
-        if current_position in location_map:
-            del location_map[current_position]
-        
-        # 플레이어 이동
-        move_player(player_info[player_id], n, grid)
-        x, y = player_info[player_id][0], player_info[player_id][1]
+        # 현재 플레이어의 위치와 방향을 보정해줍니다.
+        curr_player = (num, nx, ny, ndir, s, a)
+        update(curr_player)
 
-        if (x, y) in location_map:  # 싸움 발생
-            other_player = location_map.pop((x, y))  # 상대 플레이어 정보 제거
-            fight(grid, player_info, player_id, other_player, scores, n, location_map)
+        # Step 2. 해당 위치로 이동해봅니다.
+        # Step 2-1. 해당 위치에 플레이어가 없다면 그대로 움직입니다.
+        if next_player == EMPTY:
+            move(curr_player, (nx, ny))
+        # Step 2-2. 해당 위치에 플레이어가 있다면 결투를 진행합니다.
         else:
-            # 무기 처리
-            player_info[player_id][4] = handle_weapons(grid, x, y, player_info[player_id][4])
-            # 새로운 위치 기록
-            location_map[(x, y)] = player_id
+            duel(curr_player, next_player, (nx, ny))
 
 
-def main():
-    n, m, k = map(int, input().split())
-    grid = [[[] for _ in range(n)] for _ in range(n)]
-    location_map = {}
-    # Initialize grid with weapons
-    for i in range(n):
-        line = list(map(int, input().split()))
-        for j, value in enumerate(line):
-            if value > 0:
-                grid[i][j].append(value)
+# k번에 걸쳐 시뮬레이션을 진행합니다.
+for _ in range(k):
+    simulate()
 
-    # Initialize player information
-    player_info = {}
-    scores = [0] * m
-
-    for player_id in range(m):
-        x, y, d, s = map(int, input().split())
-        player_info[player_id] = [x - 1, y - 1, d, s, 0]  # x, y, direction, skill, weapon
-
-    for _ in range(k):
-        simulate_round(grid, player_info, scores, n, location_map)
-        
-    print(*scores)
-
-if __name__ == "__main__":
-    main()
+# 각 플레이어가 획득한 포인트를 출력합니다.
+for point in points:
+    print(point, end=" ")
