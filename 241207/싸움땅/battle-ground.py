@@ -1,126 +1,136 @@
-# 고려 사항
-# 1. 총 주울 때 총 배열 비어있는지 확인했는지????
-# 2.
-dr = [-1, 0, 1, 0]
-dc = [0, 1, 0, -1]
+# n * n 크기의 격자에서 진행
+# 무기가 없는 빈격자에 플레이어들이 위치하며 플레이어는 초기 능력치를 가짐
+# 총의 경우 공격력을 플레이어의 경우 초기능력치 노란색은 플레이어 번호
+## 게임 시작
+# 1-1. 본인이 향하고 있는 방향대로 한 칸만큼 이동 -> 해당 방향을 나갈 때는 정반대 방향으로 이동
+# 2-1 이동한 방향에 플레이어가 없다면 총이 있는지 확인하고 총이 있는 경우 총 획득
+# 2-1-1 이미 총이 있는 경우 더 공격력이 쏀 총을 획득하고 나머지 총들은 격자에 다시 둔다
+# 2-2-1 이동방향에 플레이어가 있는 경우 싸운다.
+# 2-2-1-1 초기 능력치와 가지고 있는 총의 공격력의 합으로 비교한다.
+# 2-2-1-1 수치가 같을 경우 초기 능력치가 큰사람이 이기고 이긴 플레이어는 초기능력치와 가지고 있는 총의 공격력 합의 차이만큼의 점수 획득
+# 2-2-2 진 플레이어는 본인이 가지고 있는 총을 격자에 내려놓고, 한 칸 이동 | 다른 플레이어가 있는 경우 오른쪽으로 90도 회전하여 빈칸에 이동
+# 2-2-2-1 총이 있는 경우 가장 공격력이 높은 총을 획득하고 격자에 내려 놓는다
+# 2-2-3 이긴 플레이어는 승리한 칸에서 가장 높은 총을 획득하고 나머지 총들을 내려놓는다
+## 1라운드이고 이게 끝나고 각 플레이어 별로 점수
+
+## 필요함수
+# def move
+## 방향만큼 한 칸 씩 이동  | 넘어갈 때는 정반대 방향으로 움직임 구현
+# def handle_gun
+## gun 바꾸기
+# def fight
+## 플레이어가 있는경우 싸움 | 초기 능력치 + 총의 공격력
+# def lose
+## 플레이어가 졌을 때
+# def simual
+## 시뮬레이션
+# def isvalid
+## 격자 나가는지 확인
+
+## 필요변수
+# score_list : 점수 기록용
+# grid : 해당 맵
+# player_list : 각 플레이어 능력치 | 총
+# n : 격자크기
+# m : 플레이어 수
+# k : 라운드
+# Direction : 방향
+# Directions_reverse : 반대 방향
+# player_location : 빠른 계산을 위한
 
 
-def oob(r, c):
-    return r < 0 or r >= N or c < 0 or c >= N
+DIRECTIONS = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+REVERSE_DIRECTION = {0: 2, 1: 3, 2: 0, 3: 1}
 
+def is_valid(x, y, n):
+    return 0 <= x < n and 0 <= y < n
 
-def set_map():
-    # 총의 번호가 0이면 넘어가기
-    tmp = [list(map(int, input().split())) for _ in range(N)]
-    for r in range(N):
-        for c in range(N):
-            if tmp[r][c] == 0: continue
-            gun_arr[r][c].append(tmp[r][c])
-
-    # 0,0 시작
-    # 플레이어 번호 라벨링
-    for m in range(1, M + 1):
-        r, c, d, s = map(int, input().split())
-        r -= 1
-        c -= 1
-        P_loc[m] = [r, c]
-        P_info[m] = [d, s, 0]
-        num_arr[r][c] = m
-    # 총 배열 입력 확인
-    # for r in range(N):
-    #     print(gun_arr[r])
-
-
-# 바라 보는 방향으로 이동
-# oob -> 반대 방향으로 한 칸 전진
-def P_move(cur):  # 좌표, 방향 변화, 이동한 칸 빈 자리 처리
-    pr, pc = P_loc[cur]
-    pd = P_info[cur][0]
-    num_arr[pr][pc] = 0
-    pr, pc = pr + dr[pd], pc + dc[pd]
-
-    if oob(pr, pc):
-        pr -= 2 * dr[pd]
-        pc -= 2 * dc[pd]
-        pd = (pd + 2) % 4
-
-    P_loc[cur] = [pr, pc]
-    P_info[cur][0] = pd
-
-    return pr, pc, pd
-
-
-# Winner, Loser 반환
-def fight(P1, P2):
-    winner, loser = P1, P1
-    s1, g1 = P_info[P1][1:]
-    s2, g2 = P_info[P2][1:]
-
-    if s1 + g1 < s2 + g2 or s1 + g1 == s2 + g2 and s1 < s2:
-        winner = P2
-        score[P2] += s2 + g2 - s1 - g1
+def move(player_id, player_info, n):
+    x, y, d, s, w = player_info[player_id]
+    nx, ny = x + DIRECTIONS[d][0], y + DIRECTIONS[d][1]
+    if is_valid(nx, ny, n):
+        player_info[player_id][0], player_info[player_id][1] = nx, ny
+        location_map.pop((x, y))
     else:
-        loser = P2
-        score[P1] += s1 + g1 - s2 - g2
+        d = REVERSE_DIRECTION[d]
+        nx, ny = x + DIRECTIONS[d][0], y + DIRECTIONS[d][1]
+        player_info[player_id][0], player_info[player_id][1] = nx, ny
+        player_info[player_id][2] = d
+        location_map.pop((x, y))
+# 2번
+# 2번
+def handle_gun(player_id, player_info, grid):
+    x, y, d, s, w = player_info[player_id]
+    if not grid[x][y]:
+        return
+    if w:
+        grid[x][y].append(w)   
+    grid[x][y].sort() 
+    w = grid[x][y].pop() 
+    player_info[player_id][4] = w
 
-    return winner, loser
+def fight(fs_index, first_player, se_index, second_player, grid, n, scores, location_map, player_info):
+    x1, y1, d1, s1, w1 = first_player
+    x2, y2, d2, s2, w2 = second_player
+    attack1 = s1 + w1
+    attack2 = s2 + w2
+    if attack1 > attack2 or (attack1 == attack2 and s1 > s2): 
+        scores[fs_index] += abs(attack1 - attack2)
+        location_map[(x2, y2)] = fs_index
+        loser_action(se_index, grid, location_map, n, player_info)
+        handle_gun(fs_index, player_info, grid)
+    else: 
+        scores[se_index] += abs(attack2 - attack1)
+        location_map[(x2, y2)] = se_index
+        loser_action(fs_index, grid, location_map, n, player_info)
+        handle_gun(se_index, player_info, grid)
+
+        
+def loser_action(se_index, grid, location_map, n, player_info):
+    x, y, d, s, w = player_info[se_index]
+    grid[x][y].append(w)  
+    player_info[se_index][4] = 0  
+    for _ in range(4):  
+        nx, ny = x + DIRECTIONS[d][0], y + DIRECTIONS[d][1]
+        if is_valid(nx, ny, n) and (nx, ny) not in location_map:
+            player_info[se_index][0], player_info[se_index][1] = nx, ny
+            player_info[se_index][2] = d
+            location_map[(nx, ny)] = se_index
+            handle_gun(se_index, player_info, grid)  
+            break
+        d = (d + 1) % 4 
 
 
-def L_move(loser):
-    lr, lc = P_loc[loser]
-    ld = P_info[loser][0]
+def simulate_round(grid, player_info, scores, n, location_map, k):
+    for _ in range(k):
 
-    for i in range(4):
-        nlr, nlc = lr + dr[(ld + i) % 4], lc + dc[(ld + i) % 4]
-        if oob(nlr, nlc) or num_arr[nlr][nlc]: continue
-        lr, lc, ld = nlr, nlc, (ld + i) % 4
-        P_loc[loser] = [lr, lc]
-        P_info[loser][0] = ld
-        num_arr[lr][lc] = loser
-        return lr, lc
-
-
-# 현재 좌표에서 총 교체
-# 좌표, 플레이어 번호
-def change_gun(gr, gc, cur):
-    g1 = P_info[cur][2]
-    if not gun_arr[gr][gc]: return
-
-    if g1:
-        gun_arr[gr][gc].append(g1)
-    g1 = max(g1, max(gun_arr[gr][gc]))
-    gun_arr[gr][gc].remove(g1)
-    P_info[cur][2] = g1
+        for index, value in list(player_info.items()):
+            move(index, player_info, n)
+            new_pos = (player_info[index][0], player_info[index][1])
+            if new_pos in location_map:  # 충돌 발생
+                fs_index = location_map.pop(new_pos)
+                fight(fs_index, player_info[fs_index], index, value, grid, n, scores, location_map, player_info)
+            else:
+                location_map[new_pos] = index
+                handle_gun(index, player_info, grid)
+    print(*scores)
 
 
-N, M, K = map(int, input().split())
-gun_arr = [[[] for _ in range(N)] for _ in range(N)]
-P_loc = [[0, 0] for _ in range(M + 1)]
-P_info = [[0, 0, 0] for _ in range(M + 1)]
-num_arr = [[0] * N for _ in range(N)]
-score = [0] * (M + 1)
-set_map()
+n, m, k = map(int, input().split())
+grid = [[[] for _ in range(n)] for _ in range(n)]
+location_map = {}
+for i in range(n):
+    line = list(map(int, input().split()))
+    for j, value in enumerate(line):
+        if value > 0:
+            grid[i][j].append(value)
 
-for k in range(K):
-    for m in range(1, M + 1):
-        Pr, Pc, Pd = P_move(m)
-        # 다른 플레이어가 있다면 대결한다.
-        if num_arr[Pr][Pc]:
-            Winner, Loser = fight(m, num_arr[Pr][Pc])
-            num_arr[Pr][Pc] = Winner
-            Loser_gun = P_info[Loser][2]
-            # 진 플레이어는 총 내려 놓는다.
-            if Loser_gun:
-                gun_arr[Pr][Pc].append(Loser_gun)
-                P_info[Loser][2] = 0
-            # 이긴 플레이어 총 교체
-            change_gun(Pr, Pc, Winner)
-            # 진 플레이어의 이동
-            nr, nc = L_move(Loser)
-            # 빈 칸 이동 후 총 획득
-            change_gun(nr, nc, Loser)
+player_info = {}
+scores = [0] * m
 
-        else:
-            num_arr[Pr][Pc] = m
-            change_gun(Pr, Pc, m)
-print(*score[1:])
+for player_id in range(m):
+    x, y, d, s = map(int, input().split())
+    player_info[player_id] = [x - 1, y - 1, d, s, 0]
+    location_map[(x-1, y-1)] = player_id
+
+simulate_round(grid, player_info, scores, n, location_map, k)
